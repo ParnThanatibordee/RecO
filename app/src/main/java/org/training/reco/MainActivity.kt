@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -50,7 +51,7 @@ class MainActivity : ComponentActivity() {
 
     data class User(
         val email: String,
-        val profileImgUrl: String,
+        var profileImgUrl: String,
         val playlists: List<String>
     )
 
@@ -126,6 +127,7 @@ class MainActivity : ComponentActivity() {
         val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
         val user = remember { mutableStateOf<User?>(null) }
         val auth = FirebaseAuth.getInstance()
+        val newImageUrl = remember { mutableStateOf<String?>(null) }
         val firestore = FirebaseFirestore.getInstance()
 
         // Fetch user data from Firestore
@@ -155,14 +157,22 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 Spacer(Modifier.height(16.dp))
-                uploadProfileImage(context, userId)
+                uploadProfileImage(context, userId, newImageUrl)
+                if (newImageUrl.value != null) {
+                    SaveChangesButton(userId, newImageUrl.value!!) {
+                        // Update the user profile image in the state and fetch data again
+                        user.value?.profileImgUrl = newImageUrl.value!!
+                        newImageUrl.value = null
+                        // Optionally fetch user data again here if needed
+                    }
+                }
                 LogoutButton(context)
             }
         }
     }
 
     @Composable
-    fun uploadProfileImage(context: Context, userId: String) {
+    fun uploadProfileImage(context: Context, userId: String, newImageUrl: MutableState<String?>) {
         val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
             type = "image/*"
         }
@@ -172,7 +182,7 @@ class MainActivity : ComponentActivity() {
                     val storageRef = FirebaseStorage.getInstance().reference.child("profiles/$userId.jpg")
                     storageRef.putFile(uri).addOnSuccessListener {
                         storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                            updateProfileImageUrl(userId, downloadUri.toString())
+                            newImageUrl.value = downloadUri.toString() // Temporarily store new image URL
                         }
                     }.addOnFailureListener {
                         Log.e("Upload", "Failed to upload image: ${it.message}")
@@ -185,10 +195,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun updateProfileImageUrl(userId: String, imageUrl: String) {
+    @Composable
+    fun SaveChangesButton(userId: String, imageUrl: String, onSaveComplete: () -> Unit) {
+        Button(onClick = {
+            updateProfileImageUrl(userId, imageUrl) {
+                onSaveComplete()
+            }
+        }) {
+            Text("Save Changes")
+        }
+    }
+
+    fun updateProfileImageUrl(userId: String, imageUrl: String, onComplete: () -> Unit) {
         val userRef = FirebaseFirestore.getInstance().collection("users").document(userId)
         userRef.update("profile_img", imageUrl).addOnSuccessListener {
             Log.d("Firestore", "Profile image updated successfully")
+            onComplete()
         }.addOnFailureListener {
             Log.e("Firestore", "Error updating profile image: ${it.message}")
         }
