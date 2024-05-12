@@ -75,9 +75,9 @@ class MainActivity : ComponentActivity() {
                     )
 
                     BottomNavigationItem(
-                        selected = navController.currentDestination?.route == "playlist",
+                        selected = navController.currentDestination?.route == "FindMusic",
                         onClick = {
-                            navController.navigate("playlist")
+                            navController.navigate("FindMusic")
                         },
                         icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
                         label = { Text(text = "Find Song") }
@@ -95,9 +95,9 @@ class MainActivity : ComponentActivity() {
             }
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
-                NavHost(navController, startDestination = "playlist") {
+                NavHost(navController, startDestination = "FindMusic") {
                     composable("Playlists") { PlaylistsPage() }
-                    composable("playlist") { PlaylistPage() }
+                    composable("FindMusic") { FindMusicPage() }
                     composable("profile") { ProfilePage(database) }
                 }
             }
@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun PlaylistPage() {
+    fun FindMusicPage() {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(text = "Find Song Page")
         }
