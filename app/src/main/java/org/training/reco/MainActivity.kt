@@ -41,7 +41,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize Firebase
         FirebaseApp.initializeApp(this)
         val database = FirebaseDatabase.getInstance().reference
 
@@ -95,13 +94,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         ) { innerPadding ->
-            // Apply padding to the content
             Box(modifier = Modifier.padding(innerPadding)) {
-                // Use NavHost for navigation
                 NavHost(navController, startDestination = "playlist") {
                     composable("Playlists") { PlaylistsPage() }
                     composable("playlist") { PlaylistPage() }
-                    composable("profile") { ProfilePage(database) } // Pass database reference
+                    composable("profile") { ProfilePage(database) }
                 }
             }
         }
@@ -131,14 +128,13 @@ class MainActivity : ComponentActivity() {
         val newImageUrl = remember { mutableStateOf<String?>(null) }
         val firestore = FirebaseFirestore.getInstance()
 
-        // Fetch user data from Firestore
         LaunchedEffect(Unit) {
             val userId = auth.currentUser?.uid
             if (userId != null) {
                 firestore.collection("users").document(userId).get().addOnSuccessListener { document ->
                     val email = document.getString("email") ?: "No Email"
                     val profileImg = document.getString("profile_img") ?: "No Image"
-                    val playlists = document.get("playlist") as? List<String> ?: listOf()  // Assuming 'playlist' is a field with a list of strings
+                    val playlists = document.get("playlist") as? List<String> ?: listOf()
                     user.value = User(email, profileImg, playlists)
                 }.addOnFailureListener { exception ->
                     Log.e("ProfilePage", "Error fetching user data", exception)
@@ -146,7 +142,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        // Display user data
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Column(
                 modifier = Modifier
@@ -167,10 +162,8 @@ class MainActivity : ComponentActivity() {
                     Spacer(modifier = Modifier.height(16.dp))
                     if (newImageUrl.value != null) {
                         SaveChangesButton(userId, newImageUrl.value ?: "") {
-                            // Update the user profile image in the state and fetch data again
                             user.value?.profileImgUrl = newImageUrl.value!!
                             newImageUrl.value = null
-                            // Optionally fetch user data again here if needed
                         }
                     }
 
@@ -192,7 +185,7 @@ class MainActivity : ComponentActivity() {
                     val storageRef = FirebaseStorage.getInstance().reference.child("profiles/$userId.jpg")
                     storageRef.putFile(uri).addOnSuccessListener {
                         storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                            newImageUrl.value = downloadUri.toString() // Temporarily store new image URL
+                            newImageUrl.value = downloadUri.toString()
                         }
                     }.addOnFailureListener {
                         Log.e("Upload", "Failed to upload image: ${it.message}")

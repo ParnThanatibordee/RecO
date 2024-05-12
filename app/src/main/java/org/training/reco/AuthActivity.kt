@@ -2,6 +2,7 @@ package org.training.reco
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -17,6 +18,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 
 class AuthActivity : ComponentActivity() {
     private lateinit var auth: FirebaseAuth
@@ -202,11 +204,30 @@ class AuthActivity : ComponentActivity() {
         FirebaseAuth.getInstance().createUserWithEmailAndPassword(email, password)
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    onSuccess()
+                    val userId = task.result?.user?.uid ?: ""
+                    createUserInFirestore(userId, email, onSuccess, errorMessage)
                 } else {
                     errorMessage.value = task.exception?.message ?: "Unknown error"
                     showDialog.value = true
                 }
+            }
+    }
+
+    private fun createUserInFirestore(userId: String, email: String, onSuccess: () -> Unit, errorMessage: MutableState<String>) {
+        val newUser = mapOf(
+            "email" to email,
+            "profile_img" to "https://firebasestorage.googleapis.com/v0/b/reco-cd1a2.appspot.com/o/default_pics.jpeg?alt=media&token=1706eaf6-8391-4ada-8334-e579e70d3cde",
+            "playlists" to listOf<String>()
+        )
+        FirebaseFirestore.getInstance().collection("users").document(userId)
+            .set(newUser)
+            .addOnSuccessListener {
+                Log.d("Firestore", "User data created successfully")
+                onSuccess()
+            }
+            .addOnFailureListener {
+                errorMessage.value = it.message ?: "Error creating user data"
+                Log.e("Firestore", "Error creating user data", it)
             }
     }
 
