@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "212313544214",
+    "project_id": "reco-cd1a2",
+    "storage_bucket": "reco-cd1a2.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:212313544214:android:3e9f87f894803b8f888737",
+        "android_client_info": {
+          "package_name": "org.training.reco"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCkp01B3tl7BZERrrgTBkt_frZ4hnan0UY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
