@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -139,7 +140,6 @@ class MainActivity : ComponentActivity() {
                     val profileImg = document.getString("profile_img") ?: "No Image"
                     val playlists = document.get("playlist") as? List<String> ?: listOf()  // Assuming 'playlist' is a field with a list of strings
                     user.value = User(email, profileImg, playlists)
-                    Log.d("ProfilePage", "User data: Email = $email, Image = $profileImg")
                 }.addOnFailureListener { exception ->
                     Log.e("ProfilePage", "Error fetching user data", exception)
                 }
@@ -148,24 +148,34 @@ class MainActivity : ComponentActivity() {
 
         // Display user data
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 user.value?.let {
                     UserProfileImage(it.profileImgUrl)
-                    Text("Email: ${it.email}")
-                    it.playlists.forEach { playlist ->
-                        Text("Playlist: $playlist")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = it.email,
+                        style = MaterialTheme.typography.h6,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    uploadProfileImage(context, userId, newImageUrl)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    if (newImageUrl.value != null) {
+                        SaveChangesButton(userId, newImageUrl.value ?: "") {
+                            // Update the user profile image in the state and fetch data again
+                            user.value?.profileImgUrl = newImageUrl.value!!
+                            newImageUrl.value = null
+                            // Optionally fetch user data again here if needed
+                        }
                     }
+
                 }
-                Spacer(Modifier.height(16.dp))
-                uploadProfileImage(context, userId, newImageUrl)
-                if (newImageUrl.value != null) {
-                    SaveChangesButton(userId, newImageUrl.value!!) {
-                        // Update the user profile image in the state and fetch data again
-                        user.value?.profileImgUrl = newImageUrl.value!!
-                        newImageUrl.value = null
-                        // Optionally fetch user data again here if needed
-                    }
-                }
+                Spacer(modifier = Modifier.weight(1f))
                 LogoutButton(context)
             }
         }
@@ -190,8 +200,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        Button(onClick = { launcher.launch(intent) }) {
-            Text("Upload New Image")
+        Button(onClick = { launcher.launch(intent) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent),
+            contentPadding = PaddingValues()
+        ) {
+            Text(
+                text = "Upload New Image",
+                style = MaterialTheme.typography.button,
+                color = MaterialTheme.colors.primary
+            )
         }
     }
 
@@ -202,7 +220,11 @@ class MainActivity : ComponentActivity() {
                 onSaveComplete()
             }
         }) {
-            Text("Save Changes")
+            Text(
+                text = "Save Changes",
+                style = MaterialTheme.typography.button,
+                color = MaterialTheme.colors.onPrimary
+            )
         }
     }
 
@@ -216,16 +238,22 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-
     @Composable
     fun LogoutButton(context: Context) {
-        Button(onClick = {
-            FirebaseAuth.getInstance().signOut()
-            context.startActivity(Intent(context, AuthActivity::class.java).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-            })
-        }) {
-            Text("Logout")
+        Button(
+            onClick = {
+                FirebaseAuth.getInstance().signOut()
+                context.startActivity(Intent(context, AuthActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                })
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = "Logout",
+                style = MaterialTheme.typography.button,
+                color = MaterialTheme.colors.onPrimary
+            )
         }
     }
 
@@ -234,7 +262,9 @@ class MainActivity : ComponentActivity() {
         Image(
             painter = rememberImagePainter(imageUrl),
             contentDescription = "Profile Image",
-            modifier = Modifier.size(128.dp).clip(CircleShape)
+            modifier = Modifier
+                .size(120.dp)
+                .clip(CircleShape),
         )
     }
 
