@@ -162,18 +162,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun removeSongFromFavorites(userId: String, songId: String, songs: MutableList<SpotifyTrack>) {
-        FirebaseFirestore.getInstance().collection("favorites").document(userId)
-            .update("song_ids", FieldValue.arrayRemove(songId))
-            .addOnSuccessListener {
-                songs.removeAll { it.id == songId }
-                Log.d("Firestore", "Song removed from favorites successfully")
-            }
-            .addOnFailureListener { e ->
-                Log.e("Firestore", "Error removing song from favorites", e)
-            }
-    }
-
     @Composable
     fun SongItem(song: SpotifyTrack, onClick: () -> Unit, onRemove: () -> Unit) {
         Row(modifier = Modifier.padding(8.dp)) {
@@ -199,6 +187,19 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    fun removeSongFromFavorites(userId: String, songId: String, songs: MutableList<SpotifyTrack>) {
+        FirebaseFirestore.getInstance().collection("favorites").document(userId)
+            .update("song_ids", FieldValue.arrayRemove(songId))
+            .addOnSuccessListener {
+                songs.removeAll { it.id == songId }
+                Log.d("Firestore", "Song removed from favorites successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Error removing song from favorites", e)
+            }
+    }
+
 
 
     fun fetchFavorites(userId: String, onResult: (List<String>) -> Unit) {
