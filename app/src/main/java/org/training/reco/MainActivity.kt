@@ -46,6 +46,7 @@ import com.google.firebase.storage.FirebaseStorage
 import org.json.JSONObject
 import java.io.File
 import kotlinx.coroutines.*
+import org.json.JSONException
 
 class MainActivity : ComponentActivity() {
 
@@ -130,6 +131,7 @@ class MainActivity : ComponentActivity() {
     fun FindMusicPage() {
         val context = LocalContext.current
         val songName = remember { mutableStateOf<String?>(null) }
+        val externalLink = remember { mutableStateOf<String?>(null) }
         val isRecording = remember { mutableStateOf(false) }
         val recordingTime = remember { mutableIntStateOf(0) } // in seconds
         val timerJob = remember { mutableStateOf<Job?>(null) }
@@ -152,7 +154,7 @@ class MainActivity : ComponentActivity() {
                             stopRecording()
                             isRecording.value = false
                             timerJob.value?.cancel()
-                            uploadAndRecognizeAudio(songName)
+                            uploadAndRecognizeAudio(context, songName, externalLink)  // Pass context here
                         }
                     },
                     modifier = Modifier.size(150.dp),
@@ -168,6 +170,11 @@ class MainActivity : ComponentActivity() {
                 songName.value?.let {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(text = "Recognized Song: $it", style = MaterialTheme.typography.h6)
+                }
+                externalLink.value?.let { link ->
+                    Button(onClick = { openUrl(context, link) }) {
+                        Text("Open Song Link")
+                    }
                 }
             }
         }
@@ -195,20 +202,56 @@ class MainActivity : ComponentActivity() {
         mediaRecorder = null
     }
 
-    private fun uploadAndRecognizeAudio(songName: MutableState<String?>) {
+    fun openUrl(context: Context, url: String) {
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        context.startActivity(intent)
+    }
+
+    private fun uploadAndRecognizeAudio(context: Context, songName: MutableState<String?>, externalLink: MutableState<String?>) {
         val storageRef = FirebaseStorage.getInstance().reference.child("audio/${audioFile?.name}")
         storageRef.putFile(Uri.fromFile(audioFile)).addOnSuccessListener {
             storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                sendAudioToRecognition(downloadUri.toString(), songName)
+                sendAudioToRecognition(context, downloadUri.toString(), songName, externalLink)
             }
         }.addOnFailureListener {
             Log.e("Upload", "Failed to upload audio: ${it.message}")
         }
     }
 
-    private fun sendAudioToRecognition(fileUrl: String, songName: MutableState<String?>) {
-        // Insert network request logic here using your chosen library (e.g., Retrofit, Volley)
+    private fun sendAudioToRecognition(context: Context, fileUrl: String, songName: MutableState<String?>, externalLink: MutableState<String?>) {
+        val url = "https://api.audd.io/"
+        val request = object : StringRequest(Method.POST, url,
+            Response.Listener<String> { response ->
+                try {
+                    val jsonObj = JSONObject(response)
+                    val result = jsonObj.getJSONObject("result")
+                    songName.value = result.getString("title")
+                    externalLink.value = result.getString("song_link")
+                } catch (e: JSONException) {
+                    songName.value = "Song not recognized"
+                    externalLink.value = null
+                    Log.e("API Error", "Failed to parse the song recognition result", e)
+                }
+            },
+            Response.ErrorListener { error ->
+                songName.value = "Failed to recognize song"
+                externalLink.value = null
+                Log.e("API Error", "Network error: ${error.message}")
+            }) {
+
+            override fun getParams(): Map<String, String> {
+                val params = HashMap<String, String>()
+                params["api_token"] = "c391dd06f91b71bd78b1aca6e2595aee"
+                params["url"] = fileUrl
+                params["return"] = "spotify"
+                return params
+            }
+        }
+
+        Volley.newRequestQueue(context).add(request)
     }
+
+
 
 
     @Composable
