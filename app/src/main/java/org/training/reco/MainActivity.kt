@@ -135,10 +135,10 @@ class MainActivity : ComponentActivity() {
         val songName = remember { mutableStateOf<String?>(null) }
         val externalLink = remember { mutableStateOf<String?>(null) }
         val isRecording = remember { mutableStateOf(false) }
-        val recordingTime = remember { mutableIntStateOf(0) } // in seconds
+        val recordingTime = remember { mutableIntStateOf(0) }
         val timerJob = remember { mutableStateOf<Job?>(null) }
-        val songId = remember { mutableStateOf<String?>(null) } // Assuming song ID is available once recognized
-        val isFavorited = remember { mutableStateOf(false) }
+        val songId = remember { mutableStateOf<String?>(null) }
+        val userId = FirebaseAuth.getInstance().currentUser?.uid
 
         Surface(color = MaterialTheme.colors.background) {
             Box(
@@ -206,17 +206,50 @@ class MainActivity : ComponentActivity() {
                     }
 
                     externalLink.value?.let { link ->
-                        Spacer(modifier = Modifier.height(10.dp))
-                        OutlinedButton(
-                            onClick = { openUrl(context, link) }
-                        ) {
-                            Text("Open Song Link")
+                        Row {
+                            OutlinedButton(
+                                onClick = { openUrl(context, link) }
+                            ) {
+                                Text("Open Song Link")
+                            }
+                            if (userId != null && songId.value != null) {
+                                Button(
+                                    onClick = { userId?.let { uid -> songId.value?.let { id -> addToFavorites(uid, id) } } },
+                                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.Magenta)
+                                ) {
+                                    Text("Add to Favorites")
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    private fun addToFavorites(userId: String, songId: String) {
+        val firestore = FirebaseFirestore.getInstance()
+        val userFavoritesRef = firestore.collection("favorites").document(userId)
+
+        userFavoritesRef.get().addOnSuccessListener { document ->
+            if (document.exists()) {
+                val currentFavorites = document.get("song_ids") as? MutableList<String> ?: mutableListOf()
+                if (songId !in currentFavorites) {
+                    currentFavorites.add(songId)
+                    userFavoritesRef.update("song_ids", currentFavorites)
+                        .addOnSuccessListener { Log.d("Firestore", "Song added to favorites successfully") }
+                        .addOnFailureListener { e -> Log.e("Firestore", "Error adding song to favorites", e) }
+                }
+            } else {
+                userFavoritesRef.set(mapOf("song_ids" to listOf(songId)))
+                    .addOnSuccessListener { Log.d("Firestore", "Song added to favorites successfully") }
+                    .addOnFailureListener { e -> Log.e("Firestore", "Error adding song to favorites", e) }
+            }
+        }.addOnFailureListener { e ->
+            Log.e("Firestore", "Error accessing favorites", e)
+        }
+    }
+
 
     @Composable
     fun RecordingButton(isRecording: Boolean, onClick: () -> Unit) {
