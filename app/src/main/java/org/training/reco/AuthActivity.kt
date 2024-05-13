@@ -46,18 +46,18 @@ class AuthActivity : ComponentActivity() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF383838)),
+                .background(Color(0xFF222222)),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(16.dp)
             ) {
-                Text("Welcome Back!", color = Color(0xFFFFFFFF), fontSize = 24.sp, modifier = Modifier.padding(bottom = 24.dp))
+                Text("Welcome Back!", color = Color(0xFFFFFFFF), fontSize = 28.sp, modifier = Modifier.padding(bottom = 32.dp))
                 CustomTextField(value = email.value, label = "Email", onValueChange = { email.value = it })
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 CustomTextField(value = password.value, label = "Password", onValueChange = { password.value = it })
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
                 CustomButton(text = "Login", onClick = {
                     if (email.value.isEmpty() || password.value.isEmpty()) {
                         errorMessage.value = "Please fill in all fields."
@@ -66,7 +66,7 @@ class AuthActivity : ComponentActivity() {
                         loginUser(email.value, password.value, onLoginSuccess, showDialog, errorMessage)
                     }
                 })
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 TextButton(onClick = onNavigateToRegister) {
                     Text("Need an account? Register", color = Color.White)
                 }
@@ -128,20 +128,20 @@ class AuthActivity : ComponentActivity() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFF383838)),
+                .background(Color(0xFF222222)),
             contentAlignment = Alignment.Center
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.padding(16.dp)
             ) {
-                Text("Create Your Account", color = Color(0xFFFFFFFF), fontSize = 24.sp, modifier = Modifier.padding(bottom = 24.dp))
+                Text("Create Your Account", color = Color(0xFFFFFFFF), fontSize = 28.sp, modifier = Modifier.padding(bottom = 32.dp))
                 CustomTextField(value = email.value, label = "Email", onValueChange = { email.value = it })
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 CustomTextField(value = password.value, label = "Password", onValueChange = { password.value = it })
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 CustomTextField(value = confirmPassword.value, label = "Confirm Password", onValueChange = { confirmPassword.value = it })
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(32.dp))
                 CustomButton(text = "Register", onClick = {
                     if (email.value.isEmpty() || password.value.isEmpty() || confirmPassword.value.isEmpty()) {
                         errorMessage.value = "All fields must be filled out."
@@ -153,7 +153,7 @@ class AuthActivity : ComponentActivity() {
                         registerUser(email.value, password.value, onRegistrationComplete, showDialog, errorMessage)
                     }
                 })
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 TextButton(onClick = onBackToLogin) {
                     Text("Already have an account? Login", color = Color.White)
                 }
@@ -205,7 +205,9 @@ class AuthActivity : ComponentActivity() {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val userId = task.result?.user?.uid ?: ""
-                    createUserInFirestore(userId, email, onSuccess, errorMessage)
+                    createUserInFirestore(userId, email, {
+                        createInitialFavorites(userId, onSuccess, errorMessage)
+                    }, errorMessage)
                 } else {
                     errorMessage.value = task.exception?.message ?: "Unknown error"
                     showDialog.value = true
@@ -230,5 +232,20 @@ class AuthActivity : ComponentActivity() {
                 Log.e("Firestore", "Error creating user data", it)
             }
     }
+
+    private fun createInitialFavorites(userId: String, onSuccess: () -> Unit, errorMessage: MutableState<String>) {
+        val initialFavorites = mapOf("song_ids" to listOf<String>())
+        FirebaseFirestore.getInstance().collection("favorites").document(userId)
+            .set(initialFavorites)
+            .addOnSuccessListener {
+                Log.d("Firestore", "Initial favorites created successfully")
+                onSuccess()
+            }
+            .addOnFailureListener {
+                errorMessage.value = it.message ?: "Error creating initial favorites"
+                Log.e("Firestore", "Error creating initial favorites", it)
+            }
+    }
+
 
 }
