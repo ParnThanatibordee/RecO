@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -136,47 +137,90 @@ class MainActivity : ComponentActivity() {
         val recordingTime = remember { mutableIntStateOf(0) } // in seconds
         val timerJob = remember { mutableStateOf<Job?>(null) }
 
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Button(
-                    onClick = {
-                        if (mediaRecorder == null) {
-                            startRecording()
-                            isRecording.value = true
-                            recordingTime.value = 0
-                            timerJob.value = CoroutineScope(Dispatchers.Main).launch {
-                                while (isActive) {
-                                    delay(1000)
-                                    recordingTime.value += 1
-                                }
-                            }
-                        } else {
-                            stopRecording()
-                            isRecording.value = false
-                            timerJob.value?.cancel()
-                            uploadAndRecognizeAudio(context, songName, externalLink)  // Pass context here
-                        }
-                    },
-                    modifier = Modifier.size(150.dp),
-                    shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)
+        Surface(color = MaterialTheme.colors.background) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(imageVector = Icons.Default.Person, contentDescription = "Record", tint = Color.White)
-                }
-                Text(
-                    text = if (isRecording.value) "Recording: ${recordingTime.value} seconds" else "Tap to record",
-                    style = MaterialTheme.typography.body1
-                )
-                songName.value?.let {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(text = "Recognized Song: $it", style = MaterialTheme.typography.h6)
-                }
-                externalLink.value?.let { link ->
-                    Button(onClick = { openUrl(context, link) }) {
-                        Text("Open Song Link")
+                    RecordingButton(
+                        isRecording = isRecording.value,
+                        onClick = {
+                            if (mediaRecorder == null) {
+                                startRecording()
+                                isRecording.value = true
+                                recordingTime.value = 0
+                                timerJob.value = CoroutineScope(Dispatchers.Main).launch {
+                                    while (isActive) {
+                                        delay(1000)
+                                        recordingTime.value += 1
+                                    }
+                                }
+                            } else {
+                                stopRecording()
+                                isRecording.value = false
+                                timerJob.value?.cancel()
+                                uploadAndRecognizeAudio(context, songName, externalLink)
+                            }
+                        }
+                    )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    if (isRecording.value) {
+                        Text(
+                            "Recording: ${recordingTime.value} seconds",
+                            style = MaterialTheme.typography.body1,
+                            color = MaterialTheme.colors.onSurface
+                        )
+                    } else {
+                        Text(
+                            "Tap to record",
+                            style = MaterialTheme.typography.body1,
+                            color = MaterialTheme.colors.onSurface
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    songName.value?.let {
+                        Text(
+                            "Recognized Song: $it",
+                            style = MaterialTheme.typography.h6
+                        )
+                    }
+
+                    externalLink.value?.let { link ->
+                        Spacer(modifier = Modifier.height(10.dp))
+                        OutlinedButton(
+                            onClick = { openUrl(context, link) }
+                        ) {
+                            Text("Open Song Link")
+                        }
                     }
                 }
             }
+        }
+    }
+
+    @Composable
+    fun RecordingButton(isRecording: Boolean, onClick: () -> Unit) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier.size(150.dp),
+            shape = CircleShape,
+            colors = ButtonDefaults.buttonColors(backgroundColor = if (isRecording) Color.Gray else Color.Red)
+        ) {
+            Icon(
+                imageVector = if (isRecording) Icons.Default.Close else Icons.Default.Person,
+                contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
+                tint = Color.White
+            )
         }
     }
 
