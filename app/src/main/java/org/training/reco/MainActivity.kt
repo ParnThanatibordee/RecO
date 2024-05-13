@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -153,7 +154,11 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp)
+        ) {
             items(songs) { song ->
                 SongItem(song = song, onClick = { openUrl(context, song.shareUrl) }, onRemove = {
                     removeSongFromFavorites(userId, song.id, songs)
@@ -164,29 +169,41 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun SongItem(song: SpotifyTrack, onClick: () -> Unit, onRemove: () -> Unit) {
-        Row(modifier = Modifier.padding(8.dp)) {
-            Image(
-                painter = rememberImagePainter(song.imageUrl),
-                contentDescription = "Album Art",
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp),
+            elevation = 4.dp,
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
                 modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .clickable { onClick() }
-            )
-            Column(
-                modifier = Modifier
-                    .padding(start = 8.dp)
-                    .weight(1f)
+                    .padding(8.dp)
                     .clickable(onClick = onClick)
+                    .fillMaxWidth()
             ) {
-                Text(song.name, fontWeight = FontWeight.Bold)
-                Text(song.album)
-            }
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = "Remove")
+                Image(
+                    painter = rememberImagePainter(song.imageUrl),
+                    contentDescription = "Album Art",
+                    modifier = Modifier
+                        .size(60.dp)
+                        .clip(CircleShape)
+                )
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 8.dp)
+                        .weight(1f)
+                ) {
+                    Text(song.name, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.subtitle1)
+                    Text(song.album, style = MaterialTheme.typography.body2)
+                }
+                IconButton(onClick = onRemove) {
+                    Icon(Icons.Default.Delete, contentDescription = "Remove", tint = MaterialTheme.colors.error)
+                }
             }
         }
     }
+
 
     fun removeSongFromFavorites(userId: String, songId: String, songs: MutableList<SpotifyTrack>) {
         FirebaseFirestore.getInstance().collection("favorites").document(userId)
