@@ -14,6 +14,8 @@ import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -25,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -124,9 +127,84 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun FavoritesPage() {
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = "Favorites Page")
+        val context = LocalContext.current
+        val userId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+        val songs = remember { mutableStateListOf<SpotifyTrack>() }
+
+        LaunchedEffect(key1 = userId) {
+            fetchFavorites(userId) { ids ->
+                ids.forEach { id ->
+                    getSpotifyTrackDetails(id, context) { track ->
+                        songs.add(track)
+                    }
+                }
+            }
         }
+
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            items(songs) { song ->
+                SongItem(song = song)
+            }
+        }
+    }
+
+    data class SpotifyTrack(val id: String, val name: String, val album: String, val imageUrl: String)
+
+    @Composable
+    fun SongItem(song: SpotifyTrack) {
+        Row(modifier = Modifier.padding(8.dp)) {
+            Image(
+                painter = rememberImagePainter(song.imageUrl),
+                contentDescription = "Album Art",
+                modifier = Modifier.size(48.dp).clip(CircleShape)
+            )
+            Column(modifier = Modifier.padding(start = 8.dp)) {
+                Text(song.name, fontWeight = FontWeight.Bold)
+                Text(song.album)
+            }
+        }
+    }
+
+    fun fetchFavorites(userId: String, onResult: (List<String>) -> Unit) {
+        FirebaseFirestore.getInstance()
+            .collection("favorites")
+            .document(userId)
+            .get()
+            .addOnSuccessListener { document ->
+                val songIds = document.get("song_ids") as? List<String> ?: emptyList()
+                onResult(songIds)
+            }
+            .addOnFailureListener { e ->
+                Log.e("FetchFavorites", "Error fetching favorites", e)
+            }
+    }
+
+    fun getSpotifyTrackDetails(songId: String, context: Context, onResult: (SpotifyTrack) -> Unit) {
+        val url = "https://spotify-scraper.p.rapidapi.com/v1/track/metadata?trackId=$songId"
+        val request = object : StringRequest(Method.GET, url,
+            Response.Listener<String> { response ->
+                try {
+                    val jsonObj = JSONObject(response)
+                    val name = jsonObj.getString("name")
+                    val albumName = jsonObj.getJSONObject("album").getString("name")
+                    val imageUrl = jsonObj.getJSONObject("album").getJSONArray("cover").getJSONObject(0).getString("url")
+
+                    onResult(SpotifyTrack(songId, name, albumName, imageUrl))
+                } catch (e: JSONException) {
+                    Log.e("API Error", "Failed to parse the song details: ${e.message}")
+                }
+            },
+            Response.ErrorListener { error ->
+                Log.e("API Error", "Network error: ${error.message}")
+            }) {
+            override fun getHeaders(): Map<String, String> {
+                val headers = HashMap<String, String>()
+                headers["X-RapidAPI-Host"] = "spotify-scraper.p.rapidapi.com"
+                headers["X-RapidAPI-Key"] = "aa70132aacmsha524da9b490da06p1bc0cbjsn478c39da0e0f"
+                return headers
+            }
+        }
+        Volley.newRequestQueue(context).add(request)
     }
 
     @Composable
