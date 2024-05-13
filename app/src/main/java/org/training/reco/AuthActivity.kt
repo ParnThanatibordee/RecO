@@ -205,7 +205,9 @@ class AuthActivity : ComponentActivity() {
             .addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val userId = task.result?.user?.uid ?: ""
-                    createUserInFirestore(userId, email, onSuccess, errorMessage)
+                    createUserInFirestore(userId, email, {
+                        createInitialFavorites(userId, onSuccess, errorMessage)
+                    }, errorMessage)
                 } else {
                     errorMessage.value = task.exception?.message ?: "Unknown error"
                     showDialog.value = true
@@ -230,5 +232,20 @@ class AuthActivity : ComponentActivity() {
                 Log.e("Firestore", "Error creating user data", it)
             }
     }
+
+    private fun createInitialFavorites(userId: String, onSuccess: () -> Unit, errorMessage: MutableState<String>) {
+        val initialFavorites = mapOf("song_ids" to listOf<String>())
+        FirebaseFirestore.getInstance().collection("favorites").document(userId)
+            .set(initialFavorites)
+            .addOnSuccessListener {
+                Log.d("Firestore", "Initial favorites created successfully")
+                onSuccess()
+            }
+            .addOnFailureListener {
+                errorMessage.value = it.message ?: "Error creating initial favorites"
+                Log.e("Firestore", "Error creating initial favorites", it)
+            }
+    }
+
 
 }
