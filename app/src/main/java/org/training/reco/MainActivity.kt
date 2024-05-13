@@ -522,6 +522,7 @@ class MainActivity : ComponentActivity() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 user.value?.let {
+                    Spacer(modifier = Modifier.height(16.dp))
                     UserProfileImage(it.profileImgUrl)
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
