@@ -18,7 +18,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -85,7 +87,7 @@ class MainActivity : ComponentActivity() {
                         onClick = {
                             navController.navigate("Favorites")
                         },
-                        icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
+                        icon = { Icon(Icons.Filled.Favorite, contentDescription = "Profile") },
                         label = { Text(text = "Favorites") }
                     )
 
@@ -94,7 +96,7 @@ class MainActivity : ComponentActivity() {
                         onClick = {
                             navController.navigate("FindMusic")
                         },
-                        icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
+                        icon = { Icon(Icons.Filled.Search, contentDescription = "Profile") },
                         label = { Text(text = "Find Song") }
                     )
 
@@ -190,7 +192,7 @@ class MainActivity : ComponentActivity() {
                     songName.value?.let {
                         Text(
                             "Recognized Song: $it",
-                            style = MaterialTheme.typography.h6
+                            style = MaterialTheme.typography.subtitle2
                         )
                     }
 
@@ -211,7 +213,7 @@ class MainActivity : ComponentActivity() {
     fun RecordingButton(isRecording: Boolean, onClick: () -> Unit) {
         Button(
             onClick = onClick,
-            modifier = Modifier.size(150.dp),
+            modifier = Modifier.size(180.dp),
             shape = CircleShape,
             colors = ButtonDefaults.buttonColors(backgroundColor = if (isRecording) Color.Gray else Color.Red)
         ) {
