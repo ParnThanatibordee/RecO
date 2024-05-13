@@ -276,7 +276,8 @@ class MainActivity : ComponentActivity() {
             Icon(
                 imageVector = if (isRecording) Icons.Default.Close else Icons.Default.Person,
                 contentDescription = if (isRecording) "Stop Recording" else "Start Recording",
-                tint = Color.White
+                tint = Color.White,
+                modifier = Modifier.size(50.dp)
             )
         }
     }
