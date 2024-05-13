@@ -2,11 +2,15 @@ package org.training.reco
 
 import android.content.Context
 import android.content.Intent
+import android.media.MediaRecorder
+import android.net.Uri
 import android.os.Bundle
+import android.provider.MediaStore
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
@@ -17,6 +21,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -30,13 +35,22 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberImagePainter
+import com.android.volley.Response
+import com.android.volley.toolbox.StringRequest
+import com.android.volley.toolbox.Volley
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import org.json.JSONObject
+import java.io.File
+import kotlinx.coroutines.*
 
 class MainActivity : ComponentActivity() {
+
+    private var mediaRecorder: MediaRecorder? = null
+    private var audioFile: File? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -114,10 +128,88 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun FindMusicPage() {
+        val context = LocalContext.current
+        val songName = remember { mutableStateOf<String?>(null) }
+        val isRecording = remember { mutableStateOf(false) }
+        val recordingTime = remember { mutableIntStateOf(0) } // in seconds
+        val timerJob = remember { mutableStateOf<Job?>(null) }
+
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = "Find Song Page")
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Button(
+                    onClick = {
+                        if (mediaRecorder == null) {
+                            startRecording()
+                            isRecording.value = true
+                            recordingTime.value = 0
+                            timerJob.value = CoroutineScope(Dispatchers.Main).launch {
+                                while (isActive) {
+                                    delay(1000)
+                                    recordingTime.value += 1
+                                }
+                            }
+                        } else {
+                            stopRecording()
+                            isRecording.value = false
+                            timerJob.value?.cancel()
+                            uploadAndRecognizeAudio(songName)
+                        }
+                    },
+                    modifier = Modifier.size(150.dp),
+                    shape = CircleShape,
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.Red)
+                ) {
+                    Icon(imageVector = Icons.Default.Person, contentDescription = "Record", tint = Color.White)
+                }
+                Text(
+                    text = if (isRecording.value) "Recording: ${recordingTime.value} seconds" else "Tap to record",
+                    style = MaterialTheme.typography.body1
+                )
+                songName.value?.let {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(text = "Recognized Song: $it", style = MaterialTheme.typography.h6)
+                }
+            }
         }
     }
+
+    private fun startRecording() {
+        audioFile = File(getExternalFilesDir(null), "audio_record.m4a")
+        mediaRecorder = MediaRecorder().apply {
+            setAudioSource(MediaRecorder.AudioSource.MIC)
+            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            setAudioEncodingBitRate(128000)
+            setAudioSamplingRate(44100)
+            setOutputFile(audioFile?.absolutePath)
+            prepare()
+            start()
+        }
+    }
+
+    private fun stopRecording() {
+        mediaRecorder?.apply {
+            stop()
+            release()
+        }
+        mediaRecorder = null
+    }
+
+    private fun uploadAndRecognizeAudio(songName: MutableState<String?>) {
+        val storageRef = FirebaseStorage.getInstance().reference.child("audio/${audioFile?.name}")
+        storageRef.putFile(Uri.fromFile(audioFile)).addOnSuccessListener {
+            storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
+                sendAudioToRecognition(downloadUri.toString(), songName)
+            }
+        }.addOnFailureListener {
+            Log.e("Upload", "Failed to upload audio: ${it.message}")
+        }
+    }
+
+    private fun sendAudioToRecognition(fileUrl: String, songName: MutableState<String?>) {
+        // Insert network request logic here using your chosen library (e.g., Retrofit, Volley)
+    }
+
 
     @Composable
     fun ProfilePage(database: DatabaseReference) {
