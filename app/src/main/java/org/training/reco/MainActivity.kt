@@ -139,6 +139,7 @@ class MainActivity : ComponentActivity() {
         val timerJob = remember { mutableStateOf<Job?>(null) }
         val songId = remember { mutableStateOf<String?>(null) }
         val userId = FirebaseAuth.getInstance().currentUser?.uid
+        val snackbarHostState = remember { SnackbarHostState() }
 
         Surface(color = MaterialTheme.colors.background) {
             Box(
@@ -214,7 +215,11 @@ class MainActivity : ComponentActivity() {
                             }
                             if (userId != null && songId.value != null) {
                                 Button(
-                                    onClick = { userId?.let { uid -> songId.value?.let { id -> addToFavorites(uid, id) } } },
+                                    onClick = {
+                                        userId?.let { uid -> songId.value?.let { id ->
+                                            addToFavorites(uid, id, snackbarHostState)
+                                        } }
+                                    },
                                     colors = ButtonDefaults.buttonColors(backgroundColor = Color.Magenta)
                                 ) {
                                     Text("Add to Favorites")
@@ -227,28 +232,37 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun addToFavorites(userId: String, songId: String) {
+    private fun addToFavorites(userId: String, songId: String, snackbarHostState: SnackbarHostState) {
         val firestore = FirebaseFirestore.getInstance()
         val userFavoritesRef = firestore.collection("favorites").document(userId)
 
         userFavoritesRef.get().addOnSuccessListener { document ->
-            if (document.exists()) {
-                val currentFavorites = document.get("song_ids") as? MutableList<String> ?: mutableListOf()
-                if (songId !in currentFavorites) {
-                    currentFavorites.add(songId)
-                    userFavoritesRef.update("song_ids", currentFavorites)
-                        .addOnSuccessListener { Log.d("Firestore", "Song added to favorites successfully") }
-                        .addOnFailureListener { e -> Log.e("Firestore", "Error adding song to favorites", e) }
-                }
+            val currentFavorites = document.get("song_ids") as? MutableList<String> ?: mutableListOf()
+            if (songId !in currentFavorites) {
+                currentFavorites.add(songId)
+                userFavoritesRef.update("song_ids", currentFavorites)
+                    .addOnSuccessListener {
+                        Log.d("Firestore", "Song added to favorites successfully")
+                        CoroutineScope(Dispatchers.Main).launch {
+                            snackbarHostState.showSnackbar("Song added to favorites")
+                        }
+                    }
+                    .addOnFailureListener { e ->
+                        Log.e("Firestore", "Error adding song to favorites", e)
+                    }
             } else {
-                userFavoritesRef.set(mapOf("song_ids" to listOf(songId)))
-                    .addOnSuccessListener { Log.d("Firestore", "Song added to favorites successfully") }
-                    .addOnFailureListener { e -> Log.e("Firestore", "Error adding song to favorites", e) }
+                CoroutineScope(Dispatchers.Main).launch {
+                    snackbarHostState.showSnackbar("Song is already in favorites")
+                }
             }
         }.addOnFailureListener { e ->
             Log.e("Firestore", "Error accessing favorites", e)
+            CoroutineScope(Dispatchers.Main).launch {
+                snackbarHostState.showSnackbar("Failed to access favorites")
+            }
         }
     }
+
 
 
     @Composable
