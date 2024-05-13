@@ -308,7 +308,7 @@ class MainActivity : ComponentActivity() {
                         }
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(40.dp))
 
                     if (isRecording.value) {
                         Text(
@@ -339,6 +339,8 @@ class MainActivity : ComponentActivity() {
                             style = MaterialTheme.typography.subtitle2
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(20.dp))
 
                     externalLink.value?.let { link ->
                         Row {
@@ -522,6 +524,12 @@ class MainActivity : ComponentActivity() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 user.value?.let {
+                    Text(
+                        text = "Profile Page",
+                        style = MaterialTheme.typography.h4.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colors.primary,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                     UserProfileImage(it.profileImgUrl)
                     Spacer(modifier = Modifier.height(16.dp))
