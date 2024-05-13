@@ -13,6 +13,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -47,6 +49,7 @@ import com.android.volley.toolbox.Volley
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import org.json.JSONObject
@@ -74,6 +77,15 @@ class MainActivity : ComponentActivity() {
         val email: String,
         var profileImgUrl: String
     )
+
+    data class SpotifyTrack(
+        val id: String,
+        val name: String,
+        val album: String,
+        val imageUrl: String,
+        val shareUrl: String
+    )
+
 
 
 
@@ -143,27 +155,51 @@ class MainActivity : ComponentActivity() {
 
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(songs) { song ->
-                SongItem(song = song)
+                SongItem(song = song, onClick = { openUrl(context, song.shareUrl) }, onRemove = {
+                    removeSongFromFavorites(userId, song.id, songs)
+                })
             }
         }
     }
 
-    data class SpotifyTrack(val id: String, val name: String, val album: String, val imageUrl: String)
+    fun removeSongFromFavorites(userId: String, songId: String, songs: MutableList<SpotifyTrack>) {
+        FirebaseFirestore.getInstance().collection("favorites").document(userId)
+            .update("song_ids", FieldValue.arrayRemove(songId))
+            .addOnSuccessListener {
+                songs.removeAll { it.id == songId }
+                Log.d("Firestore", "Song removed from favorites successfully")
+            }
+            .addOnFailureListener { e ->
+                Log.e("Firestore", "Error removing song from favorites", e)
+            }
+    }
 
     @Composable
-    fun SongItem(song: SpotifyTrack) {
+    fun SongItem(song: SpotifyTrack, onClick: () -> Unit, onRemove: () -> Unit) {
         Row(modifier = Modifier.padding(8.dp)) {
             Image(
                 painter = rememberImagePainter(song.imageUrl),
                 contentDescription = "Album Art",
-                modifier = Modifier.size(48.dp).clip(CircleShape)
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .clickable { onClick() }
             )
-            Column(modifier = Modifier.padding(start = 8.dp)) {
+            Column(
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .weight(1f)
+                    .clickable(onClick = onClick)
+            ) {
                 Text(song.name, fontWeight = FontWeight.Bold)
                 Text(song.album)
             }
+            IconButton(onClick = onRemove) {
+                Icon(Icons.Default.Delete, contentDescription = "Remove")
+            }
         }
     }
+
 
     fun fetchFavorites(userId: String, onResult: (List<String>) -> Unit) {
         FirebaseFirestore.getInstance()
@@ -188,8 +224,9 @@ class MainActivity : ComponentActivity() {
                     val name = jsonObj.getString("name")
                     val albumName = jsonObj.getJSONObject("album").getString("name")
                     val imageUrl = jsonObj.getJSONObject("album").getJSONArray("cover").getJSONObject(0).getString("url")
+                    val shareUrl = jsonObj.getString("shareUrl")  // Assuming the response contains a shareUrl
 
-                    onResult(SpotifyTrack(songId, name, albumName, imageUrl))
+                    onResult(SpotifyTrack(songId, name, albumName, imageUrl, shareUrl))
                 } catch (e: JSONException) {
                     Log.e("API Error", "Failed to parse the song details: ${e.message}")
                 }
@@ -206,6 +243,7 @@ class MainActivity : ComponentActivity() {
         }
         Volley.newRequestQueue(context).add(request)
     }
+
 
     @Composable
     fun FindMusicPage() {
