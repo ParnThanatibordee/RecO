@@ -67,8 +67,7 @@ class MainActivity : ComponentActivity() {
 
     data class User(
         val email: String,
-        var profileImgUrl: String,
-        val playlists: List<String>
+        var profileImgUrl: String
     )
 
 
@@ -82,12 +81,12 @@ class MainActivity : ComponentActivity() {
             bottomBar = {
                 BottomNavigation {
                     BottomNavigationItem(
-                        selected = navController.currentDestination?.route == "Playlists",
+                        selected = navController.currentDestination?.route == "Favorites",
                         onClick = {
-                            navController.navigate("Playlists")
+                            navController.navigate("Favorites")
                         },
                         icon = { Icon(Icons.Filled.Person, contentDescription = "Profile") },
-                        label = { Text(text = "Playlists") }
+                        label = { Text(text = "Favorites") }
                     )
 
                     BottomNavigationItem(
@@ -112,7 +111,7 @@ class MainActivity : ComponentActivity() {
         ) { innerPadding ->
             Box(modifier = Modifier.padding(innerPadding)) {
                 NavHost(navController, startDestination = "FindMusic") {
-                    composable("Playlists") { PlaylistsPage() }
+                    composable("Favorites") { FavoritesPage() }
                     composable("FindMusic") { FindMusicPage() }
                     composable("profile") { ProfilePage(database) }
                 }
@@ -122,9 +121,9 @@ class MainActivity : ComponentActivity() {
 
 
     @Composable
-    fun PlaylistsPage() {
+    fun FavoritesPage() {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text(text = "Playlists Page")
+            Text(text = "Favorites Page")
         }
     }
 
@@ -313,8 +312,7 @@ class MainActivity : ComponentActivity() {
                 firestore.collection("users").document(userId).get().addOnSuccessListener { document ->
                     val email = document.getString("email") ?: "No Email"
                     val profileImg = document.getString("profile_img") ?: "No Image"
-                    val playlists = document.get("playlist") as? List<String> ?: listOf()
-                    user.value = User(email, profileImg, playlists)
+                    user.value = User(email, profileImg)
                 }.addOnFailureListener { exception ->
                     Log.e("ProfilePage", "Error fetching user data", exception)
                 }
