@@ -137,6 +137,8 @@ class MainActivity : ComponentActivity() {
         val isRecording = remember { mutableStateOf(false) }
         val recordingTime = remember { mutableIntStateOf(0) } // in seconds
         val timerJob = remember { mutableStateOf<Job?>(null) }
+        val songId = remember { mutableStateOf<String?>(null) } // Assuming song ID is available once recognized
+        val isFavorited = remember { mutableStateOf(false) }
 
         Surface(color = MaterialTheme.colors.background) {
             Box(
@@ -166,7 +168,7 @@ class MainActivity : ComponentActivity() {
                                 stopRecording()
                                 isRecording.value = false
                                 timerJob.value?.cancel()
-                                uploadAndRecognizeAudio(context, songName, externalLink)
+                                uploadAndRecognizeAudio(context, songId, songName, externalLink)
                             }
                         }
                     )
@@ -192,6 +194,13 @@ class MainActivity : ComponentActivity() {
                     songName.value?.let {
                         Text(
                             "Recognized Song: $it",
+                            style = MaterialTheme.typography.subtitle2
+                        )
+                    }
+
+                    songId.value?.let { id ->
+                        Text(
+                            "Song id: $id",
                             style = MaterialTheme.typography.subtitle2
                         )
                     }
@@ -252,26 +261,28 @@ class MainActivity : ComponentActivity() {
         context.startActivity(intent)
     }
 
-    private fun uploadAndRecognizeAudio(context: Context, songName: MutableState<String?>, externalLink: MutableState<String?>) {
+    private fun uploadAndRecognizeAudio(context: Context, songId: MutableState<String?>, songName: MutableState<String?>, externalLink: MutableState<String?>) {
         val storageRef = FirebaseStorage.getInstance().reference.child("audio/${audioFile?.name}")
         storageRef.putFile(Uri.fromFile(audioFile)).addOnSuccessListener {
             storageRef.downloadUrl.addOnSuccessListener { downloadUri ->
-                sendAudioToRecognition(context, downloadUri.toString(), songName, externalLink)
+                sendAudioToRecognition(context, downloadUri.toString(), songId, songName, externalLink)
             }
         }.addOnFailureListener {
             Log.e("Upload", "Failed to upload audio: ${it.message}")
         }
     }
 
-    private fun sendAudioToRecognition(context: Context, fileUrl: String, songName: MutableState<String?>, externalLink: MutableState<String?>) {
+    private fun sendAudioToRecognition(context: Context, fileUrl: String, songId: MutableState<String?>, songName: MutableState<String?>, externalLink: MutableState<String?>) {
         val url = "https://api.audd.io/"
         val request = object : StringRequest(Method.POST, url,
             Response.Listener<String> { response ->
                 try {
                     val jsonObj = JSONObject(response)
                     val result = jsonObj.getJSONObject("result")
+                    val spotify = result.getJSONObject("spotify")
                     songName.value = result.getString("title")
                     externalLink.value = result.getString("song_link")
+                    songId.value = spotify.getString("id")
                 } catch (e: JSONException) {
                     songName.value = "Song not recognized"
                     externalLink.value = null
